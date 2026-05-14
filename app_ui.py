@@ -1,15 +1,14 @@
 import streamlit as st
 
-# 1. إعدادات الهيكل الأساسي (الوضع العريض + إخفاء القوائم الافتراضية)
-st.set_page_config(page_title="Majlis Al-Bina v2.8", layout="wide", initial_sidebar_state="expanded")
+# 1. إعدادات الهيكل الأساسي
+st.set_page_config(page_title="Majlis Al-Bina v2.9", layout="wide", initial_sidebar_state="expanded")
 
 # 2. هندسة المظهر التقني (CSS)
 st.markdown("""
     <style>
-    /* الخلفية السوداء العميقة */
     .main { background-color: #010307; }
     
-    /* تصميم الصبورة الشبكية (The Board) */
+    /* الصبورة الشبكية */
     .the-board {
         background-color: #000000;
         background-image: 
@@ -24,91 +23,92 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* أزرار الأعضاء - وضوح عالي جداً */
+    /* تصميم أزرار الأعضاء بوضوح عالي وبالعربية */
     .stButton>button {
         background: linear-gradient(180deg, #0d1b2a, #050a0f);
         color: #b0d4ff;
         border: 1px solid #1a3a5a;
-        font-size: 15px !important; /* تكبير الخط ليكون واضحاً */
-        font-weight: 800; /* خط سميك */
-        padding: 10px 5px;
+        font-size: 14px !important; /* حجم واضح للخط العربي */
+        font-weight: 800;
+        padding: 12px 5px;
         width: 100%;
         border-radius: 8px;
-        text-transform: uppercase;
         transition: 0.3s all ease-in-out;
+        font-family: 'Arial', sans-serif;
     }
     
-    /* تأثير التشغيل (Active Glow) */
-    .stButton>button:hover {
+    /* تأثير التشغيل عند النقر */
+    .stButton>button:active, .stButton>button:focus {
         border-color: #00ccff;
         color: #ffffff;
-        box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
-        transform: translateY(-2px);
+        box-shadow: 0 0 25px rgba(0, 204, 255, 0.6);
+        transform: scale(1.02);
     }
 
-    /* أيقونة القرآن الكريم المطورة */
+    /* أيقونة القرآن الكريم في الأسفل */
     .quran-container {
         text-align: center;
-        margin-top: 30px;
-        padding: 20px;
+        margin-top: 20px;
+        padding: 15px;
         border-top: 1px solid #102030;
     }
     .quran-symbol {
-        font-size: 60px;
-        filter: drop-shadow(0 0 15px #deff9a88);
+        font-size: 55px;
         color: #deff9a;
+        filter: drop-shadow(0 0 15px #deff9a66);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. الشريط الجانبي المركزي (Sidebar Control) ---
+# --- 3. الشريط الجانبي (مركز التحكم المركزي) ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#00ccff; text-align:center;'>لوحة التحكم المركزية</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#00ccff;'>⚙️ مركز التحكم</h2>", unsafe_allow_html=True)
     st.write("---")
     
     with st.expander("📂 الكاتالوك (Catalyst)", expanded=True):
-        st.info("• فهرس المصطلحات المادية")
-        st.info("• خرائط التقاطع البياني")
+        st.info("• فهارس المصطلحات المادية")
+        st.info("• سجل القواعد §")
         
     with st.expander("👥 حالة الأعضاء (Status)", expanded=True):
-        st.success("A1-A5: Active 🟢")
-        st.success("A6-A10: Standby 🔵")
+        st.success("الأعضاء (1-5): نشط 🟢")
+        st.success("الأعضاء (6-10): جاهز 🟢")
         
     with st.expander("📊 إدارة الداتا (Data)", expanded=False):
-        st.button("تزامن ملفات الإكسيل")
-        st.caption("Last Sync: 14 May 2026")
+        st.button("مزامنة ملفات الإكسيل")
         
     with st.expander("🧠 وحدة الذكاء (AI Core)", expanded=False):
-        st.slider("دقة المحرك المنطقي", 0, 100, 98)
-        st.code("Model: Majlis-Logic-v2")
+        st.write("المحرك: Majlis-Logic-v2")
 
-# --- 4. الهيكل الرئيسي للواجهة ---
+# --- 4. توزيع الأعضاء حسب الكتالوج رقم 3 ---
 
-# أ) الصف العلوي: الوكلاء الأفقيون (A1-A5)
-st.markdown("<p style='font-size:12px; color:#224466;'>Horizontal Analysis Units (A1-A5)</p>", unsafe_allow_html=True)
+# أ) الصف العلوي: الأعضاء (A1-A5) - تحليل أفقي
+st.markdown("<p style='font-size:12px; color:#224466; text-align:center;'>وحدات التحليل الأفقي (A1-A5)</p>", unsafe_allow_html=True)
 h_cols = st.columns(5)
-h_agents = ["RESEARCH", "MARKETING", "RESOURCES", "SALES", "LEGAL"]
-for i, col in enumerate(h_cols):
-    col.button(f"💠 {h_agents[i]}")
+# الأسماء المعتمدة في الكتالوج 3
+h_names = ["A1: المُستقبِل", "A2: المُحلل السياقي", "A3: المُقارن المادي", "A4: المُلاحظ والراصد", "A5: الناقد المنطقي"]
 
-# ب) المنطقة الوسطى: الصبورة + الوكلاء الجانبيون (A6-A10)
+for i, col in enumerate(h_cols):
+    col.button(h_names[i])
+
+# ب) المنطقة الوسطى: الصبورة + الأعضاء (A6-A10)
 body_left, body_right = st.columns([8.2, 1.8])
 
 with body_left:
-    # الصبورة المركزية
+    # الصبورة الكبرى
     st.markdown("<div class='the-board'>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#0a1a2a; font-family:monospace; font-size:35px;'>[ SYSTEM_ONLINE ]</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#0a1a2a; font-family:monospace; font-size:35px;'>[ SYSTEM_READY ]</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     
     # صندوق السحر
-    query = st.text_input("", placeholder="The Magic Box (صندوق السحر) - أدخل المصطلح المادي هنا للتحليل...")
+    query = st.text_input("", placeholder="صندوق السحر: أدخل الكلمة للبدء في استخراج البينة المادية...")
 
 with body_right:
-    # الوكلاء العموديون (A6-A10)
-    st.markdown("<p style='font-size:10px; color:#224466; text-align:center;'>Vertical Units</p>", unsafe_allow_html=True)
-    v_agents = ["DESIGN", "OPERAT.", "SUPPORT", "FINANCE", "DEV"]
-    for agent in v_agents:
-        st.button(f"⚡ {agent}")
+    # الأعضاء العموديون (A6-A10) حسب الكتالوج 3
+    st.markdown("<p style='font-size:11px; color:#224466; text-align:center;'>وحدات الضبط والتدقيق</p>", unsafe_allow_html=True)
+    v_names = ["A6: حارس القواعد", "A7: المُصنف والمبوب", "A8: الآمر والحاكم", "A9: الصائغ النهائي", "A10: المنسق العام"]
+    
+    for name in v_names:
+        st.button(name)
     
     # أيقونة القرآن في الأسفل
     st.markdown("""
@@ -118,6 +118,6 @@ with body_right:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 5. منطق التشغيل المبدئي ---
+# 5. التفاعل المبدئي
 if query:
-    st.toast(f"جاري تحليل البينة لـ: {query}")
+    st.toast(f"يتم استدعاء البينة لتحليل: {query}")

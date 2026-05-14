@@ -1,28 +1,18 @@
 import streamlit as st
 
-# ═══════════════════════════════════════════════════════════════
-# إعدادات الهيكل الأساسي
-# ═══════════════════════════════════════════════════════════════
+# 1. إعدادات الهيكل الأساسي
+st.set_page_config(page_title="Majlis Al-Bina v3.5", layout="wide", initial_sidebar_state="collapsed")
 
-st.set_page_config(
-    page_title="مجلس البينة",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-# ═══════════════════════════════════════════════════════════════
-# CSS والتنسيق
-# ═══════════════════════════════════════════════════════════════
-
+# 2. هندسة المظهر (CSS) - الحل الجذري للخط العمودي وتنسيق الأسماء
 st.markdown("""
-<style>
-    * { direction: rtl; }
+    <style>
+    /* حذف الخط العمودي الذي يظهر عند إغلاق Sidebar */
+    [data-testid="stVerticalBlock"] > div > div > div > div { border: none !important; }
+    [data-testid="stColumn"] { border: none !important; }
+
+    .main { background-color: #010307; direction: rtl; }
     
-    .main {
-        background-color: #010307;
-    }
-    
-    /* السبورة الشبكية */
+    /* السبورة التفاعلية */
     .the-board {
         background-color: #000000;
         background-image: 
@@ -31,252 +21,92 @@ st.markdown("""
         background-size: 45px 45px;
         border: 2px solid #102030;
         border-radius: 12px;
-        height: 520px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        height: 480px;
+        display: flex; align-items: center; justify-content: center;
         box-shadow: inset 0 0 40px rgba(0, 150, 255, 0.1);
-        margin-bottom: 15px;
+        margin-bottom: 20px;
+        color: #00ccff;
+        font-family: 'Courier New', monospace;
+        font-size: 28px;
+        text-align: center;
     }
-    
-    /* أزرار الأعضاء */
-    .stButton > button {
+
+    /* أزرار الأعضاء - خط عريض 900 وتصميم مادي */
+    .stButton>button {
         background: linear-gradient(180deg, #0d1b2a, #050a0f);
         color: #b0d4ff;
         border: 1px solid #1a3a5a;
         font-size: 14px !important;
-        font-weight: 800;
-        padding: 12px 8px;
+        font-weight: 900 !important; /* خط عريض جداً */
+        padding: 10px 2px;
         width: 100%;
         border-radius: 8px;
-        transition: 0.3s all ease-in-out;
+        transition: 0.3s all;
     }
     
-    .stButton > button:hover {
+    .stButton>button:hover {
         border-color: #00ccff;
+        box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
         color: #ffffff;
-        box-shadow: 0 0 25px rgba(0, 204, 255, 0.6);
     }
-    
-    .stButton > button:active {
-        transform: scale(1.02);
-    }
-    
-    /* النصوص */
-    .header-text {
-        color: #00ccff;
-        font-size: 20px;
-        font-weight: bold;
+
+    /* أيقونة القرآن بتوهج أخضر */
+    .quran-glow {
         text-align: center;
-        margin-bottom: 15px;
+        margin-top: 30px;
+        padding: 10px;
+        filter: drop-shadow(0 0 10px rgba(222, 255, 154, 0.4));
     }
-    
-    .section-label {
-        color: #224466;
-        font-size: 12px;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-    
-    /* أيقونة القرآن */
-    .quran-container {
-        text-align: center;
-        margin-top: 20px;
-        padding: 15px;
-        border-top: 1px solid #102030;
-    }
-    
-    .quran-symbol {
-        font-size: 55px;
-        color: #deff9a;
-        filter: drop-shadow(0 0 15px #deff9a66);
-    }
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #0a0f1a;
-    }
-    
-</style>
-""", unsafe_allow_html=True)
-
-# ═══════════════════════════════════════════════════════════════
-# تهيئة Session State
-# ═══════════════════════════════════════════════════════════════
-
-if 'show_settings' not in st.session_state:
-    st.session_state.show_settings = False
-
-if 'show_agents' not in st.session_state:
-    st.session_state.show_agents = False
-
-if 'selected_agent' not in st.session_state:
-    st.session_state.selected_agent = None
-
-if 'api_key' not in st.session_state:
-    st.session_state.api_key = ""
-
-if 'model' not in st.session_state:
-    st.session_state.model = "Gemini"
-
-if 'temperature' not in st.session_state:
-    st.session_state.temperature = 0.7
-
-# ═══════════════════════════════════════════════════════════════
-# قاموس الأعضاء
-# ═══════════════════════════════════════════════════════════════
-
-AGENTS = {
-    'A1': {'name': 'المستقبل', 'prompt': 'أنت المستقبل - تجمع البيانات والمعطيات الأولية...'},
-    'A2': {'name': 'المحلل', 'prompt': 'أنت المحلل - تحلل السياق والعلاقات...'},
-    'A3': {'name': 'المقارن', 'prompt': 'أنت المقارن - تقارن بين الآيات والنصوص...'},
-    'A4': {'name': 'الملاحظ', 'prompt': 'أنت الملاحظ - تلاحظ التفاصيل الدقيقة...'},
-    'A5': {'name': 'الناقد', 'prompt': 'أنت الناقد - تنقد المنطق والاستنتاجات...'},
-    'A6': {'name': 'المقعد', 'prompt': 'أنت المقعد - تحافظ على القواعس والمعايير...'},
-    'A7': {'name': 'المراقب', 'prompt': 'أنت المراقب - تصنف وتنظم النتائج...'},
-    'A8': {'name': 'الحاكم', 'prompt': 'أنت الحاكم - تصدر الأوامر والتوجيهات...'},
-    'A9': {'name': 'المسجل', 'prompt': 'أنت المسجل - تسجل وتصيغ النتائج النهائية...'},
-    'A10': {'name': 'الاستراتيجي', 'prompt': 'أنت الاستراتيجي - تنسق بين الجميع...'},
-}
-
-# ═══════════════════════════════════════════════════════════════
-# الشريط الجانبي
-# ═══════════════════════════════════════════════════════════════
-
-with st.sidebar:
-    st.markdown("<div style='text-align:center; color:#00ccff; font-size:18px; font-weight:bold;'>مجلس البينة</div>", unsafe_allow_html=True)
-    st.write("---")
-    
-    # زر الإعدادات
-    if st.button("⚙️ الإعدادات", use_container_width=True):
-        st.session_state.show_settings = not st.session_state.show_settings
-    
-    # عرض الإعدادات
-    if st.session_state.show_settings:
-        st.write("---")
-        st.markdown("### 🔑 مفتاح API")
-        st.session_state.api_key = st.text_input(
-            "أدخل المفتاح:",
-            value=st.session_state.api_key,
-            type="password",
-            label_visibility="collapsed"
-        )
-        
-        st.markdown("### 🔧 اختر الموديل")
-        st.session_state.model = st.radio(
-            "الموديل:",
-            ["Gemini", "GPT (قريباً)"],
-            label_visibility="collapsed"
-        )
-        
-        st.markdown("### 🔥 درجة الحرارة")
-        st.session_state.temperature = st.slider(
-            "Temperature:",
-            0.0, 1.0, 0.7, 0.1,
-            label_visibility="collapsed"
-        )
-        
-        if st.button("🔗 اختبار الاتصال", use_container_width=True):
-            if st.session_state.api_key:
-                st.success("✅ متصل!")
-            else:
-                st.error("❌ أدخل المفتاح أولاً")
-        
-        st.write("---")
-        st.markdown("### 📂 الكاتالوكات")
-        st.info("فهارس المصطلحات المادية وسجل القواعس")
-        
-        st.markdown("### 📊 إدارة البيانات")
-        if st.button("مزامنة ملفات xlsx", use_container_width=True):
-            st.info("جاري المزامنة...")
-    
-    st.write("---")
-    
-    # زر الأعضاء
-    if st.button("👥 الأعضاء", use_container_width=True):
-        st.session_state.show_agents = not st.session_state.show_agents
-    
-    # عرض الأعضاء
-    if st.session_state.show_agents:
-        st.write("---")
-        st.markdown("### اختر عضو:")
-        
-        for agent_id, agent_info in AGENTS.items():
-            if st.button(f"{agent_id}: {agent_info['name']}", use_container_width=True, key=f"agent_{agent_id}"):
-                st.session_state.selected_agent = agent_id
-        
-        if st.session_state.selected_agent:
-            st.write("---")
-            st.markdown(f"### {st.session_state.selected_agent}: {AGENTS[st.session_state.selected_agent]['name']}")
-            st.markdown("#### System Prompt:")
-            st.code(AGENTS[st.session_state.selected_agent]['prompt'], language="text")
-    
-    st.write("---")
-    st.markdown("""
-    <div class='quran-container'>
-        <div class='quran-symbol'>📖</div>
-        <div style='color:#deff9a; font-size:14px; font-weight:bold;'>البيان القرآني</div>
-    </div>
+    </style>
     """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════
-# المحتوى الرئيسي
-# ═══════════════════════════════════════════════════════════════
+# 3. إدارة الحالة (Session State) للتفاعلية
+if 'active_member' not in st.session_state:
+    st.session_state.active_member = "[ SYSTEM_READY ]"
 
-# العنوان
-st.markdown("<div class='header-text'>📖 مجلس البينة</div>", unsafe_allow_html=True)
+# --- 4. التوزيع الأفقي (A1 - A5) ---
+st.markdown("<p style='text-align:center; color:#224466; font-size:12px;'>وحدات التحليل الأفقي (الكتالوج 3)</p>", unsafe_allow_html=True)
+h_names = ["A1: المُستقبِل", "A2: المُحلل السياقي", "A3: المُقارن المادي", "A4: المُلاحظ والراصد", "A5: الناقد المنطقي"]
+h_cols = st.columns(5)
 
-# الأعضاء العلويون (A1-A5)
-st.markdown("<div class='section-label'>وحدات التحليل الأفقي (A1-A5)</div>", unsafe_allow_html=True)
+for i in range(5):
+    if h_cols[i].button(h_names[i]):
+        st.session_state.active_member = f"العضو النشط: {h_names[i]}"
 
-cols_top = st.columns(5)
-top_agents = ['A1', 'A2', 'A3', 'A4', 'A5']
+st.write("") 
 
-for idx, col in enumerate(cols_top):
-    with col:
-        agent_id = top_agents[idx]
-        agent_name = AGENTS[agent_id]['name']
-        st.button(f"{agent_id}: {agent_name}", key=f"top_{agent_id}")
-
-# المنطقة الوسطى
-st.write("")
-
-# السبورة والأعضاء اليمينيون
-main_col, right_col = st.columns([8, 2])
+# --- 5. الصبورة + التوزيع العمودي (A6 - A10) ---
+# توزيع 8.5 لليمن (الصبورة) و 1.5 لليسار (الأعضاء) لتجنب التداخل
+main_col, side_col = st.columns([8.5, 1.5])
 
 with main_col:
-    # السبورة
-    st.markdown("<div class='the-board'>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#0a1a2a; font-family:monospace; font-size:35px;'>[ SYSTEM_READY ]</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    # عرض السبورة مع الحالة المحدثة
+    st.markdown(f"<div class='the-board'>{st.session_state.active_member}</div>", unsafe_allow_html=True)
     
-    # صندوق الإدخال
-    query = st.text_input(
-        "",
-        placeholder="صندوق السحر: أدخل الكلمة للبدء في استخراج البينة المادية..."
-    )
+    # صندوق السحر في المنتصف
+    query = st.text_input("", placeholder="صندوق السحر: أدخل الكلمة للبدء في استخراج البينة المادية...")
 
-with right_col:
-    # الأعضاء اليمينيون (A6-A10)
-    st.markdown("<div class='section-label'>وحدات الضبط والتدقيق</div>", unsafe_allow_html=True)
+with side_col:
+    st.markdown("<p style='text-align:center; color:#224466; font-size:11px;'>وحدات الضبط</p>", unsafe_allow_html=True)
+    v_names = ["A6: حارس القواعد §", "A7: المُصنف والمبوب", "A8: الآمر والحاكم", "A9: الصائغ النهائي", "A10: المنسق العام"]
     
-    right_agents = ['A6', 'A7', 'A8', 'A9', 'A10']
+    for name in v_names:
+        if st.button(name):
+            st.session_state.active_member = f"العضو النشط: {name}"
     
-    for agent_id in right_agents:
-        agent_name = AGENTS[agent_id]['name']
-        st.button(f"{agent_id}: {agent_name}", key=f"right_{agent_id}", use_container_width=True)
-    
-    # أيقونة القرآن
+    # أيقونة القرآن المتميزة
     st.markdown("""
-    <div class='quran-container'>
-        <div class='quran-symbol'>📖</div>
-        <div style='color:#deff9a; font-size:12px; font-weight:bold;'>البيان<br>القرآني</div>
-    </div>
+        <div class='quran-glow'>
+            <div style='font-size:50px;'>📖</div>
+            <div style='color:#deff9a; font-size:12px; font-weight:bold;'>البيان القرآني</div>
+        </div>
     """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════
-# التفاعل
-# ═══════════════════════════════════════════════════════════════
+# 6. شريط جانبي مخفي للإعدادات والبروتوكولات
+with st.sidebar:
+    st.header("⚙️ الإعدادات")
+    st.button("أيقونة البروتوكولات")
+    st.button("سجل القواعد §")
 
 if query:
-    st.toast(f"🔍 يتم البحث عن: {query}")
+    st.toast(f"جاري معالجة: {query}")

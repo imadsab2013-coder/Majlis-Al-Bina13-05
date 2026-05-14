@@ -1,105 +1,126 @@
 import streamlit as st
-import time
 
-# ==========================================
-# 1. إعدادات الهيكل والتصميم (CSS)
-# ==========================================
+# 1. إعدادات الهيكل والتصميم الصارم
 st.set_page_config(page_title="مجلس البينة", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
     .main { background-color: #010307; direction: rtl; }
-    /* تصميم نهر المحادثة */
-    .chat-river {
-        background-color: #000000; border: 1px solid #102030;
-        border-radius: 15px; height: 550px; overflow-y: auto;
-        padding: 25px; margin-bottom: 20px;
+    
+    /* السبورة السوداء الكبيرة - ميدان العمل */
+    .the-black-board {
+        background-color: #000000;
+        border: 2px solid #1a1a1a;
+        border-radius: 20px;
+        min-height: 600px;
+        padding: 30px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow-y: auto;
     }
-    .data-block {
-        background: #001a33; border-right: 5px solid #00ccff;
-        padding: 15px; margin: 15px 0; border-radius: 8px; color: #ffffff; font-size: 20px;
+
+    /* أيقونة القرآن المستقلة في الواجهة */
+    .quran-icon-main {
+        font-size: 50px;
+        cursor: pointer;
+        transition: 0.3s;
+        text-align: center;
     }
-    .agent-block {
-        background-color: #0d0d0d; border: 1px solid #1a1a1a;
-        padding: 15px; margin: 10px 50px 10px 10px; border-radius: 12px;
-        color: #00ccff; font-family: 'Courier New', monospace;
+    
+    /* فقاعات النقاش داخل السبورة */
+    .chat-entry {
+        border-bottom: 1px solid #111;
+        padding: 15px 0;
+        margin-bottom: 10px;
     }
-    .agent-sig { font-weight: bold; color: #ff3366; margin-bottom: 8px; }
+    .agent-tag {
+        color: #ff3366;
+        font-weight: bold;
+        margin-left: 10px;
+    }
+    .data-text {
+        color: #ffffff;
+        font-size: 20px;
+        border-right: 3px solid #00ccff;
+        padding-right: 15px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# ==========================================
-# 2. إدارة الجلسة والمنطق (Session State)
-# ==========================================
-if 'river_content' not in st.session_state: st.session_state.river_content = []
-if 'active_agents' not in st.session_state: st.session_state.active_agents = []
-if 'conn_ready' not in st.session_state: st.session_state.conn_ready = False
+# 2. تهيئة الجلسة
+if 'board_content' not in st.session_state: st.session_state.board_content = []
+if 'present_agents' not in st.session_state: st.session_state.present_agents = []
 
-# ==========================================
-# 3. محرك البحث (البيان القرآني) - "مخزن للنسخ"
-# ==========================================
+# 3. لوحة التحكم (الإعدادات فقط)
 with st.sidebar:
-    st.title("⚙️ لوحة التحكم")
-    with st.expander("📖 أيقونة البيان القرآني", expanded=False):
-        mode = st.radio("نوع البحث:", ["بالآية", "باللفظ"])
-        if mode == "بالآية":
-            st.selectbox("السورة:", ["البقرة", "آل عمران", "..."])
+    st.markdown("<h2 style='text-align:center;'>⚙️ الإعدادات</h2>", unsafe_allow_html=True)
+    with st.expander("📊 إدارة الداتا والملفات"):
+        st.file_uploader("رفع كاتالوج جديد")
+    with st.expander("🛠️ إدارة البروتوكولات"):
+        st.write("تعديل منطق الأعضاء (A1-A10)")
+    with st.expander("📜 سجل القواعد §"):
+        st.write("القواعد المنطقية المعتمدة")
+
+# 4. الواجهة الرئيسية
+col_title, col_quran = st.columns([8, 2])
+with col_title:
+    st.markdown("<h1 style='color:#00ccff;'>📖 مجلس البينة</h1>", unsafe_allow_html=True)
+with col_quran:
+    # أيقونة القرآن المستقلة
+    if st.button("📖", help="اضغط للبحث في القرآن"):
+        st.session_state.show_search = True
+
+# محرك البحث (يظهر فقط عند الضغط على الأيقونة)
+if st.session_state.get('show_search', False):
+    with st.container():
+        st.markdown("### 🔍 محرك البحث المادي")
+        t1, t2 = st.tabs(["البحث بالآيات", "البحث بالألفاظ"])
+        with t1:
+            st.selectbox("السورة:", ["البقرة", "آل عمران"]) # تجلب من الداتا لاحقاً
             st.number_input("الآية:", min_value=1)
-        else:
-            st.text_input("اللفظ المادي:")
-        st.info("انسخ النتيجة يدويًا وضعها في السبورة أدناه.")
-
-    with st.expander("🤖 إعدادات المحرك والـ API"):
-        st.text_input("Gemini API Key:", type="password")
-        if st.button("تفعيل الاتصال"): st.session_state.conn_ready = True
-
-# ==========================================
-# 4. الواجهة الرئيسية (نهر المحادثة)
-# ==========================================
-st.markdown("<h1 style='text-align:center; color:#00ccff;'>📖 مجلس البينة</h1>", unsafe_allow_html=True)
-
-# شريط الأعضاء (الضغط للاستدعاء للسبورة)
-st.write("### 👥 استدعاء الأعضاء للنقاش")
-cols = st.columns(10)
-for i in range(1, 11):
-    if cols[i-1].button(f"A{i}"):
-        if f"A{i}" not in st.session_state.active_agents:
-            st.session_state.active_agents.append(f"A{i}")
-            st.session_state.river_content.append({"type": "sys", "msg": f"تم دخول العضو A{i} إلى قاعة النقاش."})
-
-# عرض السبورة (النهر)
-st.markdown('<div class="chat-river">', unsafe_allow_html=True)
-for item in st.session_state.river_content:
-    if item['type'] == "data":
-        st.markdown(f"<div class='data-block'><b>المادة الخام:</b><br>{item['msg']}</div>", unsafe_allow_html=True)
-    elif item['type'] == "agent":
-        st.markdown(f"<div class='agent-block'><div class='agent-sig'>👤 العضو {item['sender']}</div>{item['msg']}</div>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<p style='color:gray; font-size:12px; text-align:center;'>{item['msg']}</p>", unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# منطقة الإدخال والتفاعل
-input_col, action_col = st.columns([8, 2])
-with input_col:
-    user_text = st.text_area("", placeholder="لصق الآية هنا أو كتابة أمر...", height=100)
-with action_col:
-    if st.button("🚀 إرسال للسبورة"):
-        st.session_state.river_content.append({"type": "data", "msg": user_text})
-        st.rerun()
-    
-    # أزرار تفعيل الأعضاء الحاضرين
-    st.write("---")
-    for agent in st.session_state.active_agents:
-        if st.button(f"تفعيل {agent} ⚡"):
-            # المنطق المادي: العضو يقرأ آخر مادة في النهر ويحللها
-            analysis = f"تحليل مادي من العضو {agent} بناءً على البروتوكول الخاص به..."
-            st.session_state.river_content.append({"type": "agent", "sender": agent, "msg": analysis})
+            st.info("انسخ الآية وضعها في السبورة أدناه.")
+        with t2:
+            st.text_input("أدخل اللفظ:")
+        if st.button("إغلاق المحرك"):
+            st.session_state.show_search = False
             st.rerun()
 
-# ==========================================
-# 5. رسالة للمبرمج (The Programmer's Map)
-# ==========================================
-# ملاحظة للمبرمج: 
-# 1. ملف data_engine.py يجب أن يغذي قائمة السور والبحث في الشريط الجانبي.
-# 2. ملف agent_matrix.py يجب أن يحتوي على برومبتات الأعضاء ويربطها بـ Gemini API.
-# 3. التفاعل يتم عبر st.session_state.river_content لضمان تدفق "النهر".
+# أزرار استدعاء الأعضاء (A1-A10)
+st.write("### 👥 استدعاء الأعضاء (اضغط مرتين للإدخال للسبورة)")
+agent_cols = st.columns(10)
+for i in range(1, 11):
+    if agent_cols[i-1].button(f"A{i}"):
+        if f"A{i}" not in st.session_state.present_agents:
+            st.session_state.present_agents.append(f"A{i}")
+
+# 5. السبورة السوداء الكبيرة (محل النقاش والنتائج)
+st.markdown('<div class="the-black-board">', unsafe_allow_html=True)
+
+# عرض الأعضاء الحاضرين داخل السبورة كأيقونات نشطة
+if st.session_state.present_agents:
+    cols = st.columns(len(st.session_state.present_agents))
+    for idx, agent in enumerate(st.session_state.present_agents):
+        with cols[idx]:
+            st.markdown(f"<div style='text-align:center; color:#ff3366;'>👤 {agent}</div>", unsafe_allow_html=True)
+            if st.button(f"تكلم {agent}", key=f"speak_{agent}"):
+                st.session_state.board_content.append({"role": agent, "text": f"تحليل مادي من {agent}..."})
+
+# عرض "نهر المحادثة" داخل السبورة
+for entry in st.session_state.board_content:
+    if entry['role'] == "USER":
+        st.markdown(f"<div class='chat-entry'><div class='data-text'>{entry['text']}</div></div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div class='chat-entry'><span class='agent-tag'>{entry['role']}:</span> <span style='color:#00ccff;'>{entry['text']}</span></div>", unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# 6. منطقة الإدخال (تحت السبورة مباشرة)
+with st.container():
+    col_input, col_send = st.columns([8, 2])
+    with col_input:
+        user_msg = st.text_input("أدخل الآية أو الأمر هنا...", label_visibility="collapsed")
+    with col_send:
+        if st.button("🚀 إرسال للسبورة"):
+            if user_msg:
+                st.session_state.board_content.append({"role": "USER", "text": user_msg})
+                st.rerun()

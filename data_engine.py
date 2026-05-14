@@ -5,12 +5,11 @@ import os
 # 1. تحميل البيانات مع التخزين المؤقت لضمان السرعة المادية
 @st.cache_data
 def load_all_data():
-    # تحديد مسارات الملفات
+    # تحديد مسارات الملفات (تأكد من وجود مجلد data)
     quran_path = "data/data_quran.xlsx"
     words_path = "data/data_words.xlsx"
     
     try:
-        # التحقق من وجود الملفات قبل التحميل
         if not os.path.exists(quran_path) or not os.path.exists(words_path):
             st.error("⚠️ خطأ مادي: ملفات الإكسيل غير موجودة في مجلد data")
             return None, None
@@ -20,6 +19,7 @@ def load_all_data():
         df_words = pd.read_excel(words_path)
         
         # تنظيف البيانات (معالجة الخلايا المدمجة ffill)
+        # ضروري جداً لكي يقرأ الكود اسم السورة في كل الأسطر
         df_quran = df_quran.ffill()
         df_words = df_words.ffill()
         
@@ -32,7 +32,7 @@ def load_all_data():
 def get_surah_list():
     df_quran, _ = load_all_data()
     if df_quran is not None:
-        # ترتيب فريد للسور حسب ظهورها في المصحف
+        # ترتيب فريد للسور حسب ظهورها المادي في المصحف
         return df_quran['السورة'].unique().tolist()
     return []
 
@@ -40,7 +40,7 @@ def get_surah_list():
 def get_context_block(surah, verse_num):
     df_quran, _ = load_all_data()
     if df_quran is not None:
-        # جلب الآيات الثلاث (السياق المادي المحيط)
+        # جلب الآيات الثلاث (نظام الكتلة السياقية)
         mask = (df_quran['السورة'] == surah) & \
                (df_quran['رقم الآية'].isin([verse_num - 1, verse_num, verse_num + 1]))
         results = df_quran[mask].sort_values(by='رقم الآية')
@@ -48,22 +48,25 @@ def get_context_block(surah, verse_num):
         if not results.empty:
             block = ""
             for _, row in results.iterrows():
-                # تمييز الآية المختارة بنجمة
+                # تمييز الآية المطلوبة بـ نجمة لسهولة التعرف عليها
                 tag = "⭐ " if row['رقم الآية'] == verse_num else "⬅️ "
                 block += f"{tag} ﴿{row['نص الآية']}﴾ [{row['رقم الآية']}]\n"
             return block
-    return "لا توجد بيانات لهذا السياق."
+    return "لا توجد بيانات لهذا السياق في الملف."
 
 # 4. محرك بحث الجمع والجرد (جرد كافة مواضع اللفظ)
 def get_word_collection(word):
     _, df_words = load_all_data()
     if df_words is not None:
-        # البحث عن اللفظ في العمود المخصص للألفاظ
+        # البحث عن اللفظ في العمود المخصص (يدعم البحث الجزئي)
         results = df_words[df_words['اللفظ'].str.contains(word, na=False)]
         
         if not results.empty:
-            collection = f"📊 نتائج جرد اللفظ ({word}):\n\n"
-            for _, row in results.iterrows():
-                collection += f"• [{row['السورة']}:{row['رقم الآية']}] ﴿{row['نص الآية الكاملة']}﴾\n"
+            count = len(results)
+            collection = f"📊 جرد مادي للفظ ({word}) - العدد الإجمالي: {count}\n"
+            collection += "------------------------------------------\n"
+            for i, (_, row) in enumerate(results.iterrows(), 1):
+                # عرض السورة والآية والنص الكامل للآية
+                collection += f"{i}. [{row['السورة']}:{row['رقم الآية']}] ﴿{row['نص الآية الكاملة']}﴾\n"
             return collection
-    return f"لم يتم العثور على اللفظ ({word}) في ملف الجرد."
+    return f"اللفظ ({word}) غير موجود في قاعدة بيانات الجرد الحالية."

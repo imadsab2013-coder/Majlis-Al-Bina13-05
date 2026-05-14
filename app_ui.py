@@ -1,68 +1,74 @@
 import streamlit as st
 
-# 1. إعدادات الصفحة (Theme)
-st.set_page_config(page_title="مجلس البينة", layout="wide", initial_sidebar_state="collapsed")
+# إعدادات الصفحة لتكون سوداء بالكامل وبدون هوامش كبيرة
+st.set_page_config(page_title="مجلس البينة v2.0", layout="wide", initial_sidebar_state="collapsed")
 
-# كود CSS لتخصيص المظهر (الصبورة السوداء والألوان التقنية)
+# CSS متطور لمحاكاة التصميم الذي أرسلته (الشبكة والألوان السماوية)
 st.markdown("""
     <style>
-    .main { background-color: #000000; }
-    .stButton>button { 
-        width: 100%; border-radius: 5px; height: 3em; 
-        background-color: #1a1a1a; color: #deff9a; border: 1px solid #333;
+    .main { background-color: #050a10; }
+    /* تصميم الصبورة مع الشبكة */
+    .the-board {
+        background-color: #000000;
+        background-image: linear-gradient(#112233 1px, transparent 1px), linear-gradient(90deg, #112233 1px, transparent 1px);
+        background-size: 40px 40px;
+        border: 2px solid #224466;
+        border-radius: 10px;
+        height: 500px;
+        padding: 20px;
+        position: relative;
     }
-    .stButton>button:hover { border: 1px solid #deff9a; color: white; }
-    .board-container { 
-        background-color: #0a0a0a; border: 2px solid #1a1a1a; 
-        padding: 20px; border-radius: 15px; min-height: 400px;
+    /* الأزرار والأيقونات الصغيرة */
+    .stButton>button {
+        background-color: rgba(34, 68, 102, 0.2);
+        color: #88ccff;
+        border: 1px solid #224466;
+        font-size: 12px;
+        border-radius: 4px;
     }
-    .icon-box { text-align: center; padding: 10px; border: 1px dashed #444; border-radius: 10px; }
+    .stButton>button:hover { border-color: #00ccff; color: white; }
+    /* صندوق السحر */
+    .magic-box {
+        border-top: 2px solid #224466;
+        padding-top: 10px;
+        margin-top: 10px;
+        color: #88ccff;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- الهيكل العلوي (أيقونات الأعضاء/الأدوات) ---
-cols = st.columns(10)
-for i, col in enumerate(cols):
-    with col:
-        st.markdown(f"<div class='icon-box'>🛠️<br><small>عضو {i+1}</small></div>", unsafe_allow_html=True)
+# --- الصف العلوي: الإعدادات (أصغر ما يمكن) والوكلاء ---
+top_left, top_center, top_right = st.columns([1, 8, 2])
 
-st.write("---")
+with top_left:
+    if st.button("⚙️"): # زر الإعدادات الصغير
+        st.toast("فتح الإعدادات المصغرة...")
 
-# --- منطقة التحكم الرئيسية ---
-left_col, right_col = st.columns([1, 4])
+with top_center:
+    # عرض الوكلاء كأزرار صغيرة متراصة
+    agent_cols = st.columns(10)
+    agents = ["Research", "Marketing", "Resources", "Sales", "Legal", "Design", "Operations", "Support", "Finance", "Development"]
+    for i, col in enumerate(agent_cols):
+        col.button(f"💠 {agents[i]}")
 
-with left_col:
-    st.subheader("🗂️ الخزانة")
-    show_quran = st.button("📖 ملف الآيات")
-    show_catalog = st.button("📚 الكتالوجات")
-    st.write("---")
-    show_board = st.button("📺 تفعيل الصبورة")
+with top_right:
+    st.markdown("<span style='color:#88ccff;'>📖 القرآن الكريم</span>", unsafe_allow_html=True)
 
-with right_col:
-    # منطق الظهور: لا يظهر شيء إلا إذا تم الضغط على الزر
-    if show_board:
-        st.markdown("<div class='board-container'>", unsafe_allow_html=True)
-        st.title("📺 الصبورة السوداء الكبرى")
-        st.info("الصبورة جاهزة الآن لاستقبال التحليلات... أدخل استفسارك.")
-        query = st.text_input("🔍 ابحث في البينة:", placeholder="اكتب الكلمة أو الآية هنا...")
-        if query:
-            st.success(f"جاري تحليل: {query}")
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    elif show_quran:
-        st.header("📖 بيانات ملف الآيات")
-        st.write("سيتم عرض جداول الإكسيل هنا فور استدعائها...")
-        # هنا سيتم ربط ملف data_quran.xlsx لاحقاً
-        
-    elif show_catalog:
-        st.header("📚 كتالوجات المصطلحات")
-        st.write("استعراض الكلمات وتكرارها...")
-        
-    else:
-        # الحالة الافتراضية (قبل فتح أي شيء)
-        st.markdown("""
-            <div style='text-align: center; padding-top: 100px; color: #444;'>
-                <h3>المجلس في حالة انتظار</h3>
-                <p>اختر عنصراً من الخزانة أو قم بتفعيل الصبورة لبدء العمل</p>
-            </div>
-            """, unsafe_allow_html=True)
+# --- منطقة الصبورة (The Board) ---
+st.markdown("<div class='the-board'>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align:center; color:#446688; opacity:0.5;'>The Board (الصبورة)</h2>", unsafe_allow_html=True)
+# هنا ستظهر النتائج والرسوم البيانية لاحقاً
+st.markdown("</div>", unsafe_allow_html=True)
+
+# --- صندوق السحر (The Magic Box) ---
+st.markdown("<div class='magic-box'>", unsafe_allow_html=True)
+query = st.text_input("The Magic Box (صندوق السحر)", placeholder="أدخل استفسارك هنا للبحث المادي...")
+st.markdown("</div>", unsafe_allow_html=True)
+
+# --- الشريط الجانبي الأيمن (Catalyst / System) ---
+with st.sidebar:
+    st.markdown("### Catalyst (الكاتالوك)")
+    st.write("Connection Status: 🟢")
+    st.markdown("---")
+    st.markdown("### System (النظام)")
+    st.write("Reciters / Mind")

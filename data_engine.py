@@ -1,72 +1,66 @@
 import pandas as pd
 import streamlit as st
 import os
+import re
 
-# 1. تحميل البيانات مع التخزين المؤقت لضمان السرعة المادية
+# دالة تنميط النص: تجعل "كتاب" و "كتٰب" و "الكتاب" متساوية مادياً في البحث
+def normalize_arabic(text):
+    if not isinstance(text, str): return ""
+    text = text.strip()
+    # إزالة التشكيل (الفتحة، الضمة، الكسرة...)
+    text = re.sub(r"[\u064B-\u0652]", "", text)
+    # توحيد الألفات بجميع أشكالها (أ، إ، آ، ٱ) إلى "ا"
+    text = re.sub(r"[إأآٱ]", "ا", text)
+    # توحيد الياء والألف المقصورة
+    text = re.sub(r"[ىي]", "ي", text)
+    # توحيد التاء المربوطة والهاء
+    text = re.sub(r"[ةه]", "ه", text)
+    return text
+
 @st.cache_data
 def load_all_data():
-    # تحديد مسارات الملفات (تأكد من وجود مجلد data)
-    quran_path = "data/data_quran.xlsx"
-    words_path = "data/data_words.xlsx"
-    
+    q_path, w_path = "data/data_quran.xlsx", "data/data_words.xlsx"
     try:
-        if not os.path.exists(quran_path) or not os.path.exists(words_path):
-            st.error("⚠️ خطأ مادي: ملفات الإكسيل غير موجودة في مجلد data")
+        if not os.path.exists(q_path) or not os.path.exists(w_path):
+            st.error("⚠️ ملفات الداتا غير موجودة في مجلد data")
             return None, None
-            
-        # تحميل الملفات
-        df_quran = pd.read_excel(quran_path) 
-        df_words = pd.read_excel(words_path)
-        
-        # تنظيف البيانات (معالجة الخلايا المدمجة ffill)
-        # ضروري جداً لكي يقرأ الكود اسم السورة في كل الأسطر
-        df_quran = df_quran.ffill()
-        df_words = df_words.ffill()
-        
-        return df_quran, df_words
+        df_q = pd.read_excel(q_path).ffill()
+        df_w = pd.read_excel(w_path).ffill()
+        return df_q, df_w
     except Exception as e:
-        st.error(f"⚠️ فشل تحميل البيانات: {e}")
+        st.error(f"⚠️ خطأ في القراءة: {e}")
         return None, None
 
-# 2. وظيفة جلب قائمة السور (لتغذية القائمة المنسدلة في الواجهة)
 def get_surah_list():
-    df_quran, _ = load_all_data()
-    if df_quran is not None:
-        # ترتيب فريد للسور حسب ظهورها المادي في المصحف
-        return df_quran['السورة'].unique().tolist()
-    return []
+    df, _ = load_all_data()
+    return df['السورة'].unique().tolist() if df is not None else []
 
-# 3. محرك بحث السياق (الآية السابقة + المختارة + اللاحقة)
 def get_context_block(surah, verse_num):
-    df_quran, _ = load_all_data()
-    if df_quran is not None:
-        # جلب الآيات الثلاث (نظام الكتلة السياقية)
-        mask = (df_quran['السورة'] == surah) & \
-               (df_quran['رقم الآية'].isin([verse_num - 1, verse_num, verse_num + 1]))
-        results = df_quran[mask].sort_values(by='رقم الآية')
-        
-        if not results.empty:
-            block = ""
-            for _, row in results.iterrows():
-                # تمييز الآية المطلوبة بـ نجمة لسهولة التعرف عليها
-                tag = "⭐ " if row['رقم الآية'] == verse_num else "⬅️ "
-                block += f"{tag} ﴿{row['نص الآية']}﴾ [{row['رقم الآية']}]\n"
+    df, _ = load_all_data()
+    if df is not None:
+        # توسيع السياق لـ 13 آية (6 قبل و 6 بعد)
+        start, end = max(1, verse_num - 6), verse_num + 6
+        mask = (df['السورة'] == surah) & (df['رقم الآية'].between(start, end))
+        res = df[mask].sort_values('رقم الآية')
+        if not res.empty:
+            block = f"📖 سياق سورة {surah} | النطاق: {start} - {res['رقم الآية'].max()}\n" + "="*50 + "\n"
+            for _, r in res.iterrows():
+                tag = "⭐ " if r['رقم الآية'] == verse_num else "⬅️ "
+                block += f"{tag} ﴿{r['نص الآية']}﴾ [{r['رقم الآية']}]\n\n"
             return block
-    return "لا توجد بيانات لهذا السياق في الملف."
+    return "لا توجد نتائج."
 
-# 4. محرك بحث الجمع والجرد (جرد كافة مواضع اللفظ)
 def get_word_collection(word):
-    _, df_words = load_all_data()
-    if df_words is not None:
-        # البحث عن اللفظ في العمود المخصص (يدعم البحث الجزئي)
-        results = df_words[df_words['اللفظ'].str.contains(word, na=False)]
+    _, df = load_all_data()
+    if df is not None:
+        target = normalize_arabic(word)
+        # البحث في عمود 'اللفظ' بعد تنظيفه من التشكيل والهمزات
+        mask = df['اللفظ'].apply(lambda x: target in normalize_arabic(str(x)))
+        results = df[mask]
         
         if not results.empty:
-            count = len(results)
-            collection = f"📊 جرد مادي للفظ ({word}) - العدد الإجمالي: {count}\n"
-            collection += "------------------------------------------\n"
-            for i, (_, row) in enumerate(results.iterrows(), 1):
-                # عرض السورة والآية والنص الكامل للآية
-                collection += f"{i}. [{row['السورة']}:{row['رقم الآية']}] ﴿{row['نص الآية الكاملة']}﴾\n"
-            return collection
-    return f"اللفظ ({word}) غير موجود في قاعدة بيانات الجرد الحالية."
+            output = f"📊 جرد اللفظ ({word}) | المواضع المكتشفة: {len(results)}\n" + "="*50 + "\n"
+            for i, (_, r) in enumerate(results.iterrows(), 1):
+                output += f"{i}. [{r['السورة']}:{r['رقم الآية']}] ﴿{r['نص الآية الكاملة']}﴾\n\n"
+            return output
+    return f"اللفظ ({word}) لم يظهر في الجرد. تأكد من وجوده في ملف data_words.xlsx"
